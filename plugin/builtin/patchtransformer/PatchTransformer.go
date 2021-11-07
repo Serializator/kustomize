@@ -115,12 +115,19 @@ func (p *plugin) transformJson6902(m resmap.ResMap, patch jsonpatch.Patch) error
 	}
 	for _, res := range resources {
 		res.StorePreviousId()
+		buildAnnotations := res.GetBuildAnnotations()
 		err = res.ApplyFilter(patchjson6902.Filter{
 			Patch: p.Patch,
 		})
 		if err != nil {
 			return err
 		}
+
+		annotations := res.GetAnnotations()
+		for key, value := range buildAnnotations {
+			annotations[key] = value
+		}
+		err = res.SetAnnotations(annotations)
 	}
 	return nil
 }

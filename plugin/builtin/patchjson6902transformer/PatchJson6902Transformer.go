@@ -82,9 +82,20 @@ func (p *plugin) Transform(m resmap.ResMap) error {
 		return err
 	}
 	for _, res := range resources {
+		buildAnnotations := res.GetBuildAnnotations()
+
 		err = res.ApplyFilter(patchjson6902.Filter{
 			Patch: p.JsonOp,
 		})
+		if err != nil {
+			return err
+		}
+
+		annotations := res.GetAnnotations()
+		for key, value := range buildAnnotations {
+			annotations[key] = value
+		}
+		err = res.SetAnnotations(annotations)
 		if err != nil {
 			return err
 		}
