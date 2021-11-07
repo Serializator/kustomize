@@ -1427,3 +1427,21 @@ spec:
 		resid.FromString("gr2_ver2_knd2|ns2|name2"),
 	})
 }
+
+func TestGetBuildAnnotations(t *testing.T) {
+	r, err := factory.FromBytes([]byte(`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: clown
+  annotations:
+    app.kubernetes.io/name: clown
+    internal.config.kubernetes.io/prefixes: ",abc-"
+    internal.config.kubernetes.io/suffixes: ",-abc"
+`))
+	assert.NoError(t, err)
+	assert.Equal(t, r.GetBuildAnnotations(), map[string]string{
+		"internal.config.kubernetes.io/prefixes": ",abc-",
+		"internal.config.kubernetes.io/suffixes": ",-abc",
+	})
+}

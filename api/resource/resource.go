@@ -226,6 +226,24 @@ func (r *Resource) PrefixesSuffixesEquals(o ResCtx) bool {
 		utils.SameEndingSubSlice(r.GetNameSuffixes(), o.GetNameSuffixes())
 }
 
+// GetBuildAnnotations returns annotations from the resource
+// which are build annotations
+func (r Resource) GetBuildAnnotations() map[string]string {
+	annotations := r.GetAnnotations()
+	buildAnnotations := make(map[string]string)
+	if len(annotations) == 0 {
+		return buildAnnotations
+	}
+
+	for _, buildAnnotation := range BuildAnnotations {
+		if value, ok := annotations[buildAnnotation]; ok {
+			buildAnnotations[buildAnnotation] = value
+		}
+	}
+
+	return buildAnnotations
+}
+
 // RemoveBuildAnnotations removes annotations created by the build process.
 // These are internal-only to kustomize, added to the data pipeline to
 // track name changes so name references can be fixed.
