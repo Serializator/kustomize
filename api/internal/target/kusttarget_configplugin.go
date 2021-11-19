@@ -51,7 +51,8 @@ func (kt *KustTarget) configureBuiltinTransformers(
 		builtinhelpers.PatchStrategicMergeTransformer,
 		builtinhelpers.PatchTransformer,
 		builtinhelpers.NamespaceTransformer,
-		builtinhelpers.PrefixSuffixTransformer,
+		builtinhelpers.PrefixTransformer,
+		builtinhelpers.SuffixTransformer,
 		builtinhelpers.LabelTransformer,
 		builtinhelpers.AnnotationsTransformer,
 		builtinhelpers.PatchJson6902Transformer,
@@ -138,6 +139,34 @@ var generatorConfigurators = map[builtinhelpers.BuiltinPluginType]func(
 }
 
 type tFactory func() resmap.TransformerPlugin
+
+var prefixTransformerConfigurator = func(
+kt *KustTarget, f tFactory, tc *builtinconfig.TransformerConfig) (
+result resmap.Transformer, err error) {
+	p := f()
+	err = kt.configureBuiltinPlugin(p, struct {
+		Prefix     string
+		FieldSpecs []types.FieldSpec
+	}{kt.kustomization.NamePrefix, tc.NamePrefix}, builtinhelpers.PrefixTransformer)
+	if err != nil {
+		return nil, err
+	}
+	return p, nil
+}
+
+var suffixTransformerConfigurator = func(
+	kt *KustTarget, f tFactory, tc *builtinconfig.TransformerConfig) (
+	result resmap.Transformer, err error) {
+	p := f()
+	err = kt.configureBuiltinPlugin(p, struct {
+		Suffix     string
+		FieldSpecs []types.FieldSpec
+	}{kt.kustomization.NameSuffix, tc.NameSuffix}, builtinhelpers.SuffixTransformer)
+	if err != nil {
+		return nil, err
+	}
+	return p, nil
+}
 
 var transformerConfigurators = map[builtinhelpers.BuiltinPluginType]func(
 	kt *KustTarget,
@@ -289,20 +318,37 @@ var transformerConfigurators = map[builtinhelpers.BuiltinPluginType]func(
 	builtinhelpers.PrefixSuffixTransformer: func(
 		kt *KustTarget, bpt builtinhelpers.BuiltinPluginType, f tFactory, tc *builtinconfig.TransformerConfig) (
 		result []resmap.Transformer, err error) {
-		var c struct {
-			Prefix     string
-			Suffix     string
-			FieldSpecs []types.FieldSpec
-		}
-		c.Prefix = kt.kustomization.NamePrefix
-		c.Suffix = kt.kustomization.NameSuffix
-		c.FieldSpecs = tc.NamePrefix
-		p := f()
-		err = kt.configureBuiltinPlugin(p, c, bpt)
+		prefixTransformer, err := prefixTransformerConfigurator(kt, f, tc)
 		if err != nil {
 			return nil, err
 		}
-		result = append(result, p)
+		result = append(result, prefixTransformer)
+
+		suffixTransformer, err := suffixTransformerConfigurator(kt, f, tc)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, suffixTransformer)
+		return
+	},
+	builtinhelpers.PrefixTransformer: func(
+		kt *KustTarget, bpt builtinhelpers.BuiltinPluginType, f tFactory, tc *builtinconfig.TransformerConfig) (
+		result []resmap.Transformer, err error) {
+		prefixTransformer, err := prefixTransformerConfigurator(kt, f, tc)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, prefixTransformer)
+		return
+	},
+	builtinhelpers.SuffixTransformer: func(
+		kt *KustTarget, bpt builtinhelpers.BuiltinPluginType, f tFactory, tc *builtinconfig.TransformerConfig) (
+		result []resmap.Transformer, err error) {
+		suffixTransformer, err := suffixTransformerConfigurator(kt, f, tc)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, suffixTransformer)
 		return
 	},
 	builtinhelpers.ImageTagTransformer: func(
