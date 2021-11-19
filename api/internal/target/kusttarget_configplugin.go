@@ -315,22 +315,6 @@ var transformerConfigurators = map[builtinhelpers.BuiltinPluginType]func(
 		result = append(result, p)
 		return
 	},
-	builtinhelpers.PrefixSuffixTransformer: func(
-		kt *KustTarget, bpt builtinhelpers.BuiltinPluginType, f tFactory, tc *builtinconfig.TransformerConfig) (
-		result []resmap.Transformer, err error) {
-		prefixTransformer, err := prefixTransformerConfigurator(kt, f, tc)
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, prefixTransformer)
-
-		suffixTransformer, err := suffixTransformerConfigurator(kt, f, tc)
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, suffixTransformer)
-		return
-	},
 	builtinhelpers.PrefixTransformer: func(
 		kt *KustTarget, bpt builtinhelpers.BuiltinPluginType, f tFactory, tc *builtinconfig.TransformerConfig) (
 		result []resmap.Transformer, err error) {

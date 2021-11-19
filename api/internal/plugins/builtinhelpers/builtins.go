@@ -66,6 +66,30 @@ var GeneratorFactories = map[BuiltinPluginType]func() resmap.GeneratorPlugin{
 	HelmChartInflationGenerator: builtins.NewHelmChartInflationGeneratorPlugin,
 }
 
+type MultiTransformerPlugin struct {
+	plugins []resmap.TransformerPlugin
+}
+
+func (p *MultiTransformerPlugin) Transform(r resmap.ResMap) error {
+	for _, plugin := range p.plugins {
+		err := plugin.Transform(r)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (p *MultiTransformerPlugin) Config(h *resmap.PluginHelpers, c []byte) error {
+	for _, plugin := range p.plugins {
+		err := plugin.Config(h, c)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 var TransformerFactories = map[BuiltinPluginType]func() resmap.TransformerPlugin{
 	AnnotationsTransformer:         builtins.NewAnnotationsTransformerPlugin,
 	HashTransformer:                builtins.NewHashTransformerPlugin,
@@ -76,7 +100,15 @@ var TransformerFactories = map[BuiltinPluginType]func() resmap.TransformerPlugin
 	PatchJson6902Transformer:       builtins.NewPatchJson6902TransformerPlugin,
 	PatchStrategicMergeTransformer: builtins.NewPatchStrategicMergeTransformerPlugin,
 	PatchTransformer:               builtins.NewPatchTransformerPlugin,
-	PrefixSuffixTransformer:        builtins.NewPrefixSuffixTransformerPlugin,
+
+	// DEPRECATED, remove in next major version
+	PrefixSuffixTransformer: func() resmap.TransformerPlugin {
+		return &MultiTransformerPlugin{[]resmap.TransformerPlugin{
+			builtins.NewPrefixTransformerPlugin(),
+			builtins.NewSuffixTransformerPlugin(),
+		}}
+	},
+
 	PrefixTransformer:              builtins.NewPrefixTransformerPlugin,
 	SuffixTransformer:              builtins.NewSuffixTransformerPlugin,
 	ReplacementTransformer:         builtins.NewReplacementTransformerPlugin,
