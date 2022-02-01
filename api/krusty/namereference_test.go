@@ -586,3 +586,143 @@ metadata:
   namespace: kube-system
 `)
 }
+
+// test for #4428, currently demonstrates incorrect behaviour
+func TestIssue4428(t *testing.T) {
+	th := kusttest_test.MakeHarness(t)
+
+	th.WriteK(".", `
+resources:
+- foo
+- bar
+`)
+
+	th.WriteK("foo", `
+resources:
+- deployment.yaml
+configMapGenerator:
+- name: config
+  literals:
+    - param=value
+transformers:
+- kustomizeconfig.yaml
+`)
+
+	th.WriteF("foo/deployment.yaml", `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: foo
+spec:
+  template:
+    containers:
+      - name: foo
+        image: busybox
+        env:
+          - name: "SOME_PARAM"
+            valueFrom:
+              configMapKeyRef:
+                name: config
+                key: param
+`)
+
+	th.WriteF("foo/kustomizeconfig.yaml", `
+apiVersion: builtin
+kind: PrefixSuffixTransformer
+metadata:
+  name: configSecretPrefixer
+prefix: "foo-"
+fieldSpecs:
+  - kind: ConfigMap
+    path: metadata/name
+`)
+
+	th.WriteK("bar", `
+resources:
+- deployment.yaml
+configMapGenerator:
+- name: config
+  literals:
+    - param=value
+transformers:
+- kustomizeconfig.yaml
+`)
+
+	th.WriteF("bar/deployment.yaml", `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bar
+spec:
+  template:
+    containers:
+      - name: bar
+        image: busybox
+        env:
+          - name: "SOME_PARAM"
+            valueFrom:
+              configMapKeyRef:
+                name: config
+                key: param
+`)
+
+	th.WriteF("bar/kustomizeconfig.yaml", `
+apiVersion: builtin
+kind: PrefixSuffixTransformer
+metadata:
+  name: configSecretPrefixer
+prefix: "bar-"
+fieldSpecs:
+  - kind: ConfigMap
+    path: metadata/name
+`)
+
+	m := th.Run(".", th.MakeDefaultOptions())
+	th.AssertActualEqualsExpected(m, `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: foo
+spec:
+  template:
+    containers:
+    - env:
+      - name: SOME_PARAM
+        valueFrom:
+          configMapKeyRef:
+            key: param
+            name: config
+      image: busybox
+      name: foo
+---
+apiVersion: v1
+data:
+  param: value
+kind: ConfigMap
+metadata:
+  name: foo-config-27ch7b2kbt
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bar
+spec:
+  template:
+    containers:
+    - env:
+      - name: SOME_PARAM
+        valueFrom:
+          configMapKeyRef:
+            key: param
+            name: config
+      image: busybox
+      name: bar
+---
+apiVersion: v1
+data:
+  param: value
+kind: ConfigMap
+metadata:
+  name: bar-config-27ch7b2kbt
+`)
+}
